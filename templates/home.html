@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+{% block body %}
+{% if killed %}
+<p class="banner">Kill switch is on. New orders are blocked, and live strategies were moved to paper.</p>
+<form method="post" action="/kill-switch/reset" class="inline">
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  <label>Type RESET KILL SWITCH
+    <input name="confirm_text" autocomplete="off">
+  </label>
+  <button type="submit">Reset switch</button>
+</form>
+{% endif %}
+
+<section class="mood">
+  <div>
+    <p class="eyebrow">Market mood</p>
+    {% if mood %}
+    <h1>
+      <span class="pill {{ mood.regime }}">{{ mood.regime | replace("_", " ") }}</span>
+    </h1>
+    <ul class="facts">
+      <li>VIX <strong>{{ mood.vix | num(1) }}</strong> {{ "below 20" if mood.vix_below_20 else "at or above 20" }}</li>
+      <li>SPY {{ "above" if mood.spy_above_200dma else "below" }} 200-day <strong>{{ mood.spy_vs_200dma | pct }}</strong></li>
+      <li>QQQ {{ "above" if mood.qqq_above_200dma else "below" }} 200-day <strong>{{ mood.qqq_vs_200dma | pct }}</strong></li>
+      <li>Sentiment proxy <strong>{{ mood.sentiment | num(0) }}</strong></li>
+      <li>Breadth <strong>{{ mood.breadth | pct }}</strong> of the ETF basket above the 50-day</li>
+      <li class="muted">Updated {{ mood.ts | when }} · {{ mood.provider }}</li>
+    </ul>
+    <p class="muted">{{ mood.sentiment_note }} {{ mood.breadth_note }}</p>
+    {% if mood_error %}<p class="error">Showing the last snapshot. {{ mood_error }}</p>{% endif %}
+    {% else %}
+    <h1>No snapshot yet</h1>
+    <p class="error">{{ mood_error }}</p>
+    {% endif %}
+  </div>
+  <form method="post" action="/mood/refresh">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <button type="submit">Refresh</button>
+  </form>
+</section>
+
+<div class="split">
+  <section class="panel">
+    <h2>Screener flags</h2>
+    {% if flags %}
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Ticker</th><th>Screener</th><th>Gap %</th><th>Rel vol</th><th></th></tr>
+        </thead>
+        <tbody>
+          {% for flag in flags %}
+          <tr>
+            <td class="mono">{{ flag.ticker }}</td>
+            <td><a href="/screeners?id={{ flag.screener_id }}">{{ flag.screener }}</a></td>
+            <td class="num">{{ flag.gap_pct | num(1) }}</td>
+            <td class="num">{{ flag.rel_vol | num(1) }}x</td>
+            <td>
+              <form method="post" action="/actions/send" class="inline">
+                <input type="hidden" name="csrf" value="{{ csrf }}">
+                <input type="hidden" name="ticker" value="{{ flag.ticker }}">
+                <select name="strategy_id">
+                  {% for strategy in strategies %}
+                  <option value="{{ strategy.id }}">{{ strategy.name }}</option>
+                  {% endfor %}
+                </select>
+                <button type="submit">Send to strategy</button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p class="muted">No flags yet. Run SmallBioGap from the screener lab, or run the biotech pipeline below.</p>
+    {% endif %}
+  </section>
+
+  <section class="panel">
+    <h2>Active strategies</h2>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Name</th><th>Mode</th><th>P&amp;L today</th><th></th></tr>
+        </thead>
+        <tbody>
+          {% for strategy in strategies %}
+          <tr>
+            <td><a href="/strategies">{{ strategy.name }}</a></td>
+            <td><span class="pill quiet">{{ strategy.mode }}{% if not strategy.enabled %} · paused{% endif %}</span></td>
+            <td class="num {{ 'up' if pnl[strategy.id] > 0 else 'down' if pnl[strategy.id] < 0 else '' }}">{{ pnl[strategy.id] | money }}</td>
+            <td>
+              <form method="post" action="/strategies/{{ strategy.id }}/pause">
+                <input type="hidden" name="csrf" value="{{ csrf }}">
+                <input type="hidden" name="next" value="/">
+                <input type="hidden" name="paused" value="{{ '0' if not strategy.enabled else '1' }}">
+                <button class="text" type="submit">{{ "Resume" if not strategy.enabled else "Pause" }}</button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>
+
+<section class="panel">
+  <h2>Pipeline</h2>
+  <p class="muted">Regime filter, then the screener, then the strategy. A failed regime stops the run before any order.</p>
+  {% for pipeline in pipelines %}
+  <form method="post" action="/pipelines/{{ pipeline.id }}/run" class="inline">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <strong>{{ pipeline.name }}</strong>
+    <span class="muted">{{ screeners[pipeline.screener_id].name }} → strategy</span>
+    <button type="submit">Run now</button>
+  </form>
+  {% else %}
+  <p class="muted">No pipelines saved.</p>
+  {% endfor %}
+</section>
+
+<section class="panel danger-zone">
+  <h2>Kill switch</h2>
+  <p>Daily loss {{ daily_loss | money }} / {{ loss_limit | money }} limit. This cancels open orders and moves every live strategy back to paper. It does not send orders to a live broker. Flatten only closes simulated paper positions.</p>
+  <form method="post" action="/kill-switch" class="stack">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <label class="check"><input type="checkbox" name="flatten" value="1"> Flatten simulated paper positions</label>
+    <label class="check"><input type="checkbox" name="confirm" value="1"> I understand this blocks new orders</label>
+    <button class="danger" type="submit">Kill switch</button>
+  </form>
+</section>
+{% endblock %}

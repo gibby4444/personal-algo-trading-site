@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="csrf" content="{{ csrf }}">
+  <title>{{ title }} · Algo desk</title>
+  <link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+  {% if not bare %}
+  <header class="top">
+    <a class="mark" href="/">Algo desk</a>
+    <nav>
+      <a href="/">Mood</a>
+      <a href="/screeners">Screeners</a>
+      <a href="/strategies">Strategies</a>
+      <a href="/backtests">Backtests</a>
+    </nav>
+    <form method="post" action="/logout">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <button class="text" type="submit">Sign out</button>
+    </form>
+  </header>
+  {% endif %}
+  {% if flash %}<p class="flash">{{ flash }}</p>{% endif %}
+  <main>
+    {% block body %}{% endblock %}
+  </main>
+  {% if not bare %}
+  <footer>
+    <p>Paper simulator by default. Real orders are not sent, even if a strategy is flagged live.</p>
+  </footer>
+  {% endif %}
+</body>
+</html>

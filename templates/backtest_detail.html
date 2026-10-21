@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block body %}
+<p class="eyebrow">Backtest</p>
+<h1>{{ run.strategy }}</h1>
+<p class="lead">
+  <span class="pill quiet">{{ run.status }}</span>
+  <span class="mono">{{ run.symbols | join(", ") }}</span>
+  {{ run.start }} → {{ run.end }} · {{ run.timeframe }}
+</p>
+{% if run.error %}<p class="error">{{ run.error }}</p>{% endif %}
+
+{% if run.metrics %}
+<section class="metrics">
+  <div><span>Sharpe</span><strong>{{ run.metrics.sharpe | num(2) }}</strong></div>
+  <div><span>Sortino</span><strong>{{ run.metrics.sortino | num(2) }}</strong></div>
+  <div><span>CAGR</span><strong>{{ run.metrics.cagr | pct }}</strong></div>
+  <div><span>Max DD</span><strong>{{ run.metrics.max_dd | pct }}</strong></div>
+  <div><span>Win rate</span><strong>{{ run.metrics.win_rate | pct }}</strong></div>
+  <div><span>Trades</span><strong>{{ run.metrics.trades }}</strong></div>
+  <div><span>Profit factor</span><strong>{{ run.metrics.profit_factor | num(2) if run.metrics.profit_factor is not none else "—" }}</strong></div>
+</section>
+
+<section class="panel">
+  <h2>Equity</h2>
+  {{ run.equity | equity_svg }}
+  <h2>Drawdown</h2>
+  {{ run.drawdown | drawdown_svg }}
+</section>
+{% endif %}
+
+{% if run.checks %}
+<section class="panel">
+  <h2>Checks</h2>
+  <ul>
+    <li>No lookahead: {{ "pass" if run.checks.no_lookahead else "fail" }}</li>
+    <li>NaN / inf: {{ "pass" if run.checks.nan_check else "fail" }}</li>
+    <li>{{ run.checks.fill }} · {{ run.checks.cost_bps }} bps</li>
+    <li>{{ run.checks.survivorship_note }}</li>
+  </ul>
+  <p><a href="{{ run.trades_url }}">Download trades CSV</a></p>
+</section>
+{% endif %}
+
+{% if run.warnings %}
+<section class="panel">
+  <h2>Notes</h2>
+  <ul>
+    {% for note in run.warnings %}<li>{{ note }}</li>{% endfor %}
+  </ul>
+</section>
+{% endif %}
+
+{% if trades %}
+<section class="panel">
+  <h2>Trades</h2>
+  <p class="muted">Share-level P&amp;L from entry open to exit open, minus 5 bps each side. The equity curve compounds bar returns, so the two can differ by a little.</p>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Symbol</th><th>Entry</th><th>Exit</th><th>Qty</th><th>Entry px</th><th>Exit px</th><th>P&amp;L</th></tr>
+      </thead>
+      <tbody>
+        {% for trade in trades %}
+        <tr>
+          <td class="mono">{{ trade.symbol }}</td>
+          <td>{{ trade.entry_ts | when }}</td>
+          <td>{{ trade.exit_ts | when }}</td>
+          <td class="num">{{ trade.qty | num(2) }}</td>
+          <td class="num">{{ trade.entry_price | num(2) }}</td>
+          <td class="num">{{ trade.exit_price | num(2) }}</td>
+          <td class="num">{{ trade.pnl | money }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endif %}
+<p><a href="/backtests">Back to the runner</a></p>
+{% endblock %}

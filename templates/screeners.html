@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% block body %}
+<p class="eyebrow">Screener lab</p>
+<h1>Build a screen, run it, keep the names.</h1>
+<p class="lead">The universe is a static watchlist, not the whole US market. Float and news are blank until a fundamentals feed is connected. Gap % is today's open versus the prior close.</p>
+
+<div class="split">
+  <section class="panel">
+    <h2>Saved</h2>
+    <ul class="plain">
+      {% for screener in screeners %}
+      <li>
+        <a href="/screeners?id={{ screener.id }}" class="{{ 'active' if screener.id == selected else '' }}">{{ screener.name }}</a>
+        <span class="muted">{{ screener.universe }} · gate {{ screener.regime_gate or "any" }}</span>
+        {% if screener.schedule_cron %}<span class="mono muted">{{ screener.schedule_cron }}</span>{% endif %}
+        <form method="post" action="/screeners/{{ screener.id }}/run" class="inline">
+          <input type="hidden" name="csrf" value="{{ csrf }}">
+          <button type="submit">Run now</button>
+        </form>
+      </li>
+      {% endfor %}
+    </ul>
+  </section>
+
+  <section class="panel">
+    <h2>New screener</h2>
+    <form method="post" action="/screeners" class="stack">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <label>Name <input name="name" required placeholder="SmallBioGap"></label>
+      <label>Universe
+        <select name="universe">
+          {% for name in universes %}
+          <option value="{{ name }}" {{ "selected" if name == "us_smallcap" else "" }}>{{ name }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label>Regime gate
+        <select name="regime_gate">
+          <option value="">any</option>
+          <option value="risk_on" selected>risk_on</option>
+          <option value="mixed">mixed</option>
+          <option value="risk_off">risk_off</option>
+        </select>
+      </label>
+      <div class="grid2">
+        <label>Price min <input name="price_min" inputmode="decimal" value="2"></label>
+        <label>Price max <input name="price_max" inputmode="decimal" value="20"></label>
+        <label>Gap % greater than <input name="gap_pct" inputmode="decimal" value="10"></label>
+        <label>Relative volume greater than <input name="rel_vol" inputmode="decimal" value="3"></label>
+      </div>
+      <label>Sector equals <input name="sector" value="Biotech"></label>
+      <label>Schedule cron (UTC, informational)
+        <input name="schedule_cron" value="0 12 * * 1-5" class="mono">
+      </label>
+      <button type="submit">Save</button>
+    </form>
+  </section>
+</div>
+
+<section class="panel">
+  <h2>Latest results</h2>
+  {% if results %}
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Ticker</th><th>Price</th><th>Gap %</th><th>Rel vol</th><th>Sector</th><th>Float</th><th>News</th><th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in results %}
+        <tr>
+          <td class="mono">{{ row.ticker }}</td>
+          <td class="num">{{ row.metrics.price | num(2) }}</td>
+          <td class="num">{{ row.metrics.gap_pct | num(1) }}</td>
+          <td class="num">{{ row.metrics.rel_vol | num(1) }}</td>
+          <td>{{ row.metrics.sector or "—" }}</td>
+          <td>{{ row.metrics.float if row.metrics.float is not none else "—" }}</td>
+          <td>{{ row.metrics.news or "—" }}</td>
+          <td>
+            <form method="post" action="/actions/send" class="inline">
+              <input type="hidden" name="csrf" value="{{ csrf }}">
+              <input type="hidden" name="ticker" value="{{ row.ticker }}">
+              <select name="strategy_id">
+                {% for strategy in strategies %}
+                <option value="{{ strategy.id }}">{{ strategy.name }}</option>
+                {% endfor %}
+              </select>
+              <button type="submit">Send</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="muted">Nothing stored for this screener yet.</p>
+  {% endif %}
+  <p class="muted">Float and headlines are not on the free daily feed.</p>
+</section>
+{% endblock %}

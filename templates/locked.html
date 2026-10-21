@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block body %}
+<section class="panel narrow">
+  <p class="eyebrow">Closed</p>
+  <h1>This desk is not open.</h1>
+  <p class="lead">{{ reason }}</p>
+  <p class="muted">Set the variable on the Railway service (or in your local shell) and restart. Nothing in the repo can turn this on.</p>
+</section>
+{% endblock %}

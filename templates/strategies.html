@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block body %}
+<p class="eyebrow">Strategy library</p>
+<h1>Backtest stats, then a mode switch.</h1>
+<p class="lead">Live can be selected only when <span class="mono">LIVE_TRADING_ENABLED=true</span> and both live Alpaca keys are set, the confirm phrase matches, a backtest has finished, and paper-day rules pass. This build still never posts a live order. {% if totp_on %}A TOTP code is required.{% else %}Set <span class="mono">TOTP_SECRET</span> if you also want a code.{% endif %} Paper days required: {{ paper_days_required }}.</p>
+
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th><th>Assets</th><th>Sharpe</th><th>CAGR</th><th>Max DD</th><th>Win %</th><th>Trades</th><th>Mode</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in rows %}
+      {% set strategy = row.strategy %}
+      {% set metric = row.metric %}
+      <tr>
+        <td>{{ strategy.name }}</td>
+        <td>{{ strategy.asset_class }}</td>
+        <td class="num">{{ metric.sharpe | num(2) if metric else "—" }}</td>
+        <td class="num">{{ metric.cagr | pct if metric else "—" }}</td>
+        <td class="num">{{ metric.max_dd | pct if metric else "—" }}</td>
+        <td class="num">{{ metric.win_rate | pct if metric else "—" }}</td>
+        <td class="num">{{ metric.trades if metric else "—" }}</td>
+        <td><span class="pill quiet">{{ strategy.mode }}{% if not strategy.enabled %} · paused{% endif %}</span></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% for row in rows %}
+{% set strategy = row.strategy %}
+<section class="panel">
+  <h2>{{ strategy.name }}</h2>
+  <p>{{ strategy.description }}</p>
+  <p class="muted mono">{{ strategy.code_ref }}</p>
+  <p>P&amp;L today {{ row.pnl | money }} · cap {{ strategy.max_position_usd | money }} · daily loss limit {{ strategy.max_daily_loss_usd | money }}</p>
+  <div class="row-actions">
+    <a href="/backtests?strategy={{ strategy.id }}">Run backtest</a>
+    <form method="post" action="/strategies/{{ strategy.id }}/pause" class="inline">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <input type="hidden" name="next" value="/strategies">
+      <input type="hidden" name="paused" value="{{ '0' if not strategy.enabled else '1' }}">
+      <button class="text" type="submit">{{ "Resume" if not strategy.enabled else "Pause" }}</button>
+    </form>
+  </div>
+  <form method="post" action="/strategies/{{ strategy.id }}/mode" class="stack">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <label>Mode
+      <select name="mode">
+        <option value="backtest" {{ "selected" if strategy.mode == "backtest" else "" }}>Backtest</option>
+        <option value="paper" {{ "selected" if strategy.mode == "paper" else "" }}>Paper</option>
+        <option value="live" {{ "selected" if strategy.mode == "live" else "" }}>Live</option>
+      </select>
+    </label>
+    <label>Confirm phrase for live
+      <input name="confirm_text" placeholder="GO LIVE {{ strategy.name }}" autocomplete="off">
+    </label>
+    {% if totp_on %}
+    <label>TOTP <input name="totp" inputmode="numeric" autocomplete="one-time-code"></label>
+    {% endif %}
+    <button type="submit">Update mode</button>
+  </form>
+  <form method="post" action="/strategies/{{ strategy.id }}/params" class="stack">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <label>Params JSON
+      <textarea name="params" rows="5" class="mono">{{ strategy.params | tojson(indent=2) }}</textarea>
+    </label>
+    <button type="submit">Save params</button>
+  </form>
+</section>
+{% endfor %}
+{% endblock %}

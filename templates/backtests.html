@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block body %}
+<p class="eyebrow">Backtest runner</p>
+<h1>Pick a strategy, a symbol, and a window.</h1>
+<p class="lead">Signals are decided at the close and filled at the next open. Default cost is 5 bps of turnover. The run also checks that a signal does not change when later bars are removed, and that prices and signals contain no NaN or inf.</p>
+
+<section class="panel">
+  <form method="post" action="/backtests" class="stack">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <label>Strategy
+      <select name="strategy_id">
+        {% for strategy in strategies %}
+        <option value="{{ strategy.id }}" {{ "selected" if strategy.id == selected else "" }}>{{ strategy.name }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>Symbols
+      <input name="symbols" value="TSLA, QQQ" class="mono">
+    </label>
+    <div class="grid2">
+      <label>Start <input type="date" name="start" value="{{ start }}" required></label>
+      <label>End <input type="date" name="end" value="{{ end }}" required></label>
+      <label>Timeframe
+        <select name="timeframe">
+          <option value="1d" selected>1d</option>
+          <option value="1h">1h</option>
+          <option value="1m">1m</option>
+        </select>
+      </label>
+      <label>Capital <input name="capital" value="25000" inputmode="decimal"></label>
+      <label>Fees / slippage, bps <input name="cost_bps" value="5" inputmode="decimal"></label>
+    </div>
+    <button type="submit">Run</button>
+  </form>
+</section>
+
+<section class="panel">
+  <h2>Recent runs</h2>
+  {% if runs %}
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>When</th><th>Strategy</th><th>Symbols</th><th>Status</th></tr>
+      </thead>
+      <tbody>
+        {% for run in runs %}
+        <tr>
+          <td>{{ run.started_at | when }}</td>
+          <td><a href="/backtests/{{ run.id }}">{{ names.get(run.strategy_id, "—") }}</a></td>
+          <td class="mono">{{ run.symbols | join(", ") }}</td>
+          <td>{{ run.status }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="muted">No runs yet.</p>
+  {% endif %}
+</section>
+{% endblock %}
