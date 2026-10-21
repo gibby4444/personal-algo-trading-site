@@ -6,7 +6,8 @@ __pycache__/
 .mypy_cache/
 .ruff_cache/
 .env
-data/
+# SQLite cache at the repo root. A bare `data/` also ignores the app/data package.
+/data/
 *.db
 *.sqlite
 .coverage

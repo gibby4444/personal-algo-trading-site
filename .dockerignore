@@ -2,7 +2,9 @@
 venv
 .git
 .env
-data
+# SQLite cache at the build-context root. Docker matches this only there,
+# so the app/data package stays in the image. The leading slash records that.
+/data
 __pycache__
 .pytest_cache
 .mypy_cache
